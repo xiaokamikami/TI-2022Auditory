@@ -1,8 +1,38 @@
 # Untitled - By: 13173 - 周三 7月 27 2022
 
-import time,math,time
+import time,math,time,sys
 from Maix import MIC_ARRAY as mic
+from machine import Timer,PWM
+class Servo:
+    def __init__(self, pwm, dir=50, duty_min=2.5, duty_max=12.5):
+        self.value = dir
+        self.pwm = pwm
+        self.duty_min = duty_min
+        self.duty_max = duty_max
+        self.duty_range = duty_max -duty_min
+        self.enable(True)
+        self.pwm.duty(self.value/100*self.duty_range+self.duty_min)
 
+    def enable(self, en):
+        if en:
+            self.pwm.enable()
+        else:
+            self.pwm.disable()
+
+    def dir(self, percentage):
+        if percentage > 100:
+            percentage = 100
+        elif percentage < 0:
+            percentage = 0
+        self.pwm.duty(percentage/100*self.duty_range+self.duty_min)
+
+    def drive(self, inc):
+        self.value += inc
+        if self.value > 100:
+            self.value = 100
+        elif self.value < 0:
+            self.value = 0
+        self.pwm.duty(self.value/100*self.duty_range+self.duty_min)
 class Gimbal:
     def __init__(self, pitch, pid_pitch, roll=None, pid_roll=None, yaw=None, pid_yaw=None):
         self._pitch = pitch
@@ -103,6 +133,7 @@ def get_mic_dir():
         mic_list.append(AngleY)
         mic_list.append(AngleR)
         mic_list.append(Angle)
+        print("强度:",AngleR)
     a = mic.set_led(b,(0,0,255))# 配置 RGB LED 颜色值
     return mic_list #返回列表，X坐标，Y坐标，强度，角度
 #系统初始化
@@ -112,6 +143,7 @@ lcd.init()
 mic.init()
 #mic.init(i2s_d0=23, i2s_d1=22, i2s_d2=21, i2s_d3=20, i2s_ws=19, i2s_sclk=18, sk9822_dat=24, sk9822_clk=25)
 #外设初始化
+img = image.Image()
 pwm_X = machine.PWM(tim1, 50, 50, pin = 24, enable=True) #开机回中
 pwm_Y= machine.PWM(tim2, 50, 50, pin = 25, enable=True)
 '''
@@ -142,15 +174,19 @@ sound = [0,0,0,0]
 #////////初始化完成
 while True:
 # get target error
-       err_pitch, err_roll = target.get_target_err()
        # interval limit to > 10ms
        if time.ticks_ms() - t0 < 10:
            continue
        t0 = time.ticks_ms()
-       sound = get_mic_dir()
        # run
-       gimbal.run(err_pitch, err_roll, pitch_reverse = pitch_reverse, roll_reverse=roll_reverse)
-
+       sound = get_mic_dir()
+       err_roll = sound[0]
+       err_pitch = sound[1]
+       text =  'Roll' + str(sound[3])
+       if(sound[2] > 20):#阈值
+            gimbal.run(err_pitch, err_roll, pitch_reverse = pitch_reverse, roll_reverse=roll_reverse)
+            image.draw_string(rol[0], rol[1], text , color=color_G, scale=2.5)
 #关机
 mic.deinit()
 pwm.deinit()
+ips.display(img)
