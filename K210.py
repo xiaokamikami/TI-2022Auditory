@@ -144,8 +144,9 @@ mic.init()
 #mic.init(i2s_d0=23, i2s_d1=22, i2s_d2=21, i2s_d3=20, i2s_ws=19, i2s_sclk=18, sk9822_dat=24, sk9822_clk=25)
 #外设初始化
 img = image.Image()
-pwm_X = machine.PWM(tim1, 50, 50, pin = 24, enable=True) #开机回中
-pwm_Y= machine.PWM(tim2, 50, 50, pin = 25, enable=True)
+pitch_pwm = PWM(tim0, freq=50, duty=50, pin=24)#开机回中
+roll_pwm  = PWM(tim1, freq=50, duty=50, pin=25)
+
 '''
     servo:
         freq: 50 (Hz)
@@ -155,6 +156,7 @@ pwm_Y= machine.PWM(tim2, 50, 50, pin = 25, enable=True)
         IO24 <--> pitch
         IO25 <--> roll
 '''
+
 #变量初始化
 init_pitch = 80       # init position, value: [0, 100], means minimum angle to maxmum angle of servo
 init_roll = 50        # 50 means middle
@@ -171,6 +173,7 @@ target_pitch = init_pitch
 target_roll = init_roll
 
 sound = [0,0,0,0]
+distance = 0
 #////////初始化完成
 while True:
 # get target error
@@ -182,8 +185,11 @@ while True:
        sound = get_mic_dir()
        err_roll = sound[0]
        err_pitch = sound[1]
-       text =  'Roll' + str(sound[3])
-       if(sound[2] > 20):#阈值
+       #计算距离
+       distance = 250/(math.cos(sound[3]));
+       #输出信息
+       text = 'D:'+str(distance)+'CM' 'Roll:' + str(sound[3])
+       if(sound[2] > 2):#阈值
             gimbal.run(err_pitch, err_roll, pitch_reverse = pitch_reverse, roll_reverse=roll_reverse)
             image.draw_string(rol[0], rol[1], text , color=color_G, scale=2.5)
 #关机
