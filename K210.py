@@ -114,7 +114,11 @@ def get_mic_dir():
     AngleAddPi=0
     mic_list=[]
     imga = mic.get_map()    # 获取声音源分布图像
+    imgb = imga.resize(160,160)
+    imgc = imgb.to_rainbow(1)
     b = mic.get_dir(imga)   # 计算、获取声源方向
+    #显示声源图
+    lcd.display(imgc)
     for i in range(len(b)):
         if b[i]>=2:
             AngleX+= b[i] * math.sin(i * math.pi/6)
@@ -138,12 +142,12 @@ def get_mic_dir():
     return mic_list #返回列表，X坐标，Y坐标，强度，角度
 #系统初始化
 gc.collect()    #垃圾回收器
-
 lcd.init()
 mic.init(i2s_d0=34, i2s_d1=8, i2s_d2=33, i2s_d3=9, i2s_ws=32, i2s_sclk=10,sk9822_dat=7, sk9822_clk=35)#可自定义配置 IO
 fm.register(21, fm.fpioa.GPIO0)
 fm.register(22, fm.fpioa.GPIO1)
 fm.register(23, fm.fpioa.GPIO2)
+
 #外设初始化
 img = image.Image()
 pitch_pwm = PWM(tim0, freq=50, duty=50, pin=24)#开机回中
@@ -214,7 +218,7 @@ while True:
            if(err_roll > 2):
            #计算距离
            distance = 250/(math.cos(sound[3]));
-           #输出信息
+           #显示信息
            text = 'D:'+str(distance)+'CM'+'Roll:' + str(sound[3])
            if(sound[2] > 2):#阈值
                 gimbal.run(err_pitch, err_roll, pitch_reverse = pitch_reverse, roll_reverse=roll_reverse)
