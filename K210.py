@@ -140,12 +140,17 @@ def get_mic_dir():
 gc.collect()    #垃圾回收器
 
 lcd.init()
-mic.init()
-#mic.init(i2s_d0=23, i2s_d1=22, i2s_d2=21, i2s_d3=20, i2s_ws=19, i2s_sclk=18, sk9822_dat=24, sk9822_clk=25)
+mic.init(i2s_d0=34, i2s_d1=8, i2s_d2=33, i2s_d3=9, i2s_ws=32, i2s_sclk=10,sk9822_dat=7, sk9822_clk=35)#可自定义配置 IO
+fm.register(21, fm.fpioa.GPIO0)
+fm.register(22, fm.fpioa.GPIO1)
+fm.register(23, fm.fpioa.GPIO2)
 #外设初始化
 img = image.Image()
 pitch_pwm = PWM(tim0, freq=50, duty=50, pin=24)#开机回中
 roll_pwm  = PWM(tim1, freq=50, duty=50, pin=25)
+gpio_key1 = GPIO(GPIO.GPIO)
+gpio_key2 = GPIO(GPIO.GPI1)
+gpio_red  = GPIO(GPIO.GPI2)
 
 '''
     servo:
@@ -160,6 +165,7 @@ roll_pwm  = PWM(tim1, freq=50, duty=50, pin=25)
 #变量初始化
 init_pitch = 80       # init position, value: [0, 100], means minimum angle to maxmum angle of servo
 init_roll = 50        # 50 means middle
+mode = 0              # 0为指向模式  1为追踪模式
 
 pitch_pid = [0.23, 0, 0.015, 0]  # P I D I_max
 roll_pid  = [0.23, 0, 0.015, 0]  # P I D I_max
@@ -177,21 +183,47 @@ distance = 0
 #////////初始化完成
 while True:
 # get target error
-       # interval limit to > 10ms
-       if time.ticks_ms() - t0 < 10:
+       # interval limit to > 20ms
+       if time.ticks_ms() - t0 < 20:
            continue
        t0 = time.ticks_ms()
        # run
+
+
+       if(gpio_key1.value()==0):
+           mode = 1
+       else:
+           mode = 0
        sound = get_mic_dir()
        err_roll = sound[0]
        err_pitch = sound[1]
-       #计算距离
-       distance = 250/(math.cos(sound[3]));
-       #输出信息
-       text = 'D:'+str(distance)+'CM' 'Roll:' + str(sound[3])
-       if(sound[2] > 2):#阈值
-            gimbal.run(err_pitch, err_roll, pitch_reverse = pitch_reverse, roll_reverse=roll_reverse)
-            image.draw_string(rol[0], rol[1], text , color=color_G, scale=2.5)
+
+
+
+       if( mode == 1):      #跟踪模式
+           gpio_red.value(1)
+           #计算距离
+           distance = 250/(math.cos(sound[3]));
+           #输出信息
+           text = 'D:'+str(distance)+'CM'+'Roll:' + str(sound[3])
+           if(sound[2] > 2):#阈值
+                gimbal.run(err_pitch, err_roll, pitch_reverse = pitch_reverse, roll_reverse=roll_reverse)
+                image.draw_string(rol[0], rol[1], text , color=color_G, scale=2.5)
+       else :               #非跟踪
+           gpio_red.value(0)
+           if(err_roll > 2):
+           #计算距离
+           distance = 250/(math.cos(sound[3]));
+           #输出信息
+           text = 'D:'+str(distance)+'CM'+'Roll:' + str(sound[3])
+           if(sound[2] > 2):#阈值
+                gimbal.run(err_pitch, err_roll, pitch_reverse = pitch_reverse, roll_reverse=roll_reverse)
+                image.draw_string(rol[0], rol[1], text , color=color_G, scale=2.5)
+           if( mode == 0):      #非跟踪模式
+                gpio_red.value(1)
+                time.sleep(1)
+                gpio_red.value(0)
+
 #关机
 mic.deinit()
 pwm.deinit()
