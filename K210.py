@@ -15,27 +15,27 @@ from machine import Timer,PWM
 
 color_G = (0,255,0)
 def drawConfidenceText(image, rol, text, value):
-    image.draw_string(rol[0], rol[1], text , color=color_G, scale=2)
+    image.draw_string(rol[0], rol[1], text , color=(255,255,255), scale=2)
 global AngleX
 global AngleY
-global AngleR
 global Angle
 global out_flag
 AngleX = 0
 AngleY = 0
 AngleR = 0
 Angle = 0
-fc = 3    # //截止频率
-Ts = 0.05   #//采样周期
+fc = 1.2    # //截止频率
+Ts = 0.02   #//采样周期
 alpha = 0   #  //滤波系数
 b = 2.0 * math.pi * fc * Ts;
 alpha = b / (b + 1);
 global lv_num
 lv_num =0
+
+
 def get_mic_dir():
     global AngleX
     global AngleY
-    global AngleR
     global Angle
     global lv_num
     L_AngleX_IN = 0
@@ -48,11 +48,23 @@ def get_mic_dir():
     AngleR_IN = 0
     Angle_IN = 0
     AngleAddPi_IN=0
+    AngleX_IN2 = 0
+    AngleY_IN2 = 0
+    AngleR_IN2 = 0
+    Angle_IN2 = 0
+    AngleAddPi_IN2=0
+    AngleX_IN3 = 0
+    AngleY_IN3 = 0
+    AngleR_IN3 = 0
+    Angle_IN3 = 0
+    AngleAddPi_IN3=0
     lv_num = 0
-    while(lv_num<2):
+
+
+    while(lv_num<5):
         imga = mic.get_map()    # 获取声音源分布图像
-        imgb = imga.resize(160,160)
-        imgc = imgb.to_rainbow(1)
+        imgb = imga.resize(140,140)
+        #imgc = imgb.to_rainbow(1)
         b = mic.get_dir(imga)   # 计算、获取声源方向
         a = mic.set_led(b,(0,0,255))# 配置 RGB LED 颜色值
         for i in range(len(b)):
@@ -69,36 +81,46 @@ def get_mic_dir():
             else:
                 Angle_IN=AngleAddPi_IN+round(math.degrees(math.atan(AngleX_IN/AngleY_IN)),4) #计算角度
             AngleR_IN=round(math.sqrt(AngleY_IN*AngleY_IN+AngleX_IN*AngleX_IN),4) #计算强度
-        if(AngleR_IN >10):
+        if(AngleR_IN >40):
             lv_num = lv_num+1
             if(lv_num==1):
                 L_AngleX_IN = AngleX_IN
                 L_AngleY_IN = AngleY_IN
                 L_AngleR_IN = AngleR_IN
-                L_Angle_IN = Angle_IN
                 L_AngleAddPi_IN=AngleAddPi_IN
-            else:
+            elif(lv_num==2):
                 AngleX = L_AngleX_IN + alpha*(AngleX_IN - L_AngleX_IN)
                 AngleY = L_AngleY_IN + alpha*(AngleY_IN - L_AngleY_IN)
-                AngleR = L_AngleR_IN + alpha*(AngleR_IN - L_AngleR_IN)
                 Angle = L_Angle_IN + alpha*(Angle_IN - L_AngleX_IN)
                 AngleAddPi = L_AngleAddPi_IN + alpha*(AngleAddPi_IN - L_AngleAddPi_IN)
-        time.sleep_ms(20)
+            elif(lv_num==3):
+                AngleX_IN2 = AngleX_IN
+                AngleY_IN2 = AngleY_IN
+                AngleR_IN2 = AngleR_IN
+                AngleAddPi_IN2=AngleAddPi_IN
+            elif(lv_num==4):
+                AngleX = (AngleX_IN2 + alpha*(AngleX_IN - AngleX_IN2))
+                AngleY = (AngleY_IN2 + alpha*(AngleY_IN - AngleY_IN2))
+                Angle = (Angle_IN2 + alpha*(Angle_IN - AngleX_IN2))
+                AngleAddPi = (AngleAddPi_IN2 + alpha*(AngleAddPi_IN - AngleAddPi_IN2))
+                distance = math.sqrt(62500+math.pow((AngleX*2),2))
+                    #print("距离:",distance)
+                text1 = "Di: "+str(int(distance))+" CM    "
+                text2 = "Roll: " + str(int((Angle*2)))+"   "
+                drawConfidenceText(imgb,(0,0),text1,2)
+                drawConfidenceText(imgb,(0,24),text2,2)
+                lcd.display(imgb)
+        #输出信息   测评时关闭
+        if(AngleR_IN != 0):
+            pass
+            #print("x:",AngleX_IN ,"y:",AngleY_IN,"roll:",Angle_IN,"强度:",AngleR_IN)
+        time.sleep_ms(10)
         #计算距离
-        distance = math.sqrt(62500+math.pow((AngleX*2),2))
-        text1 = 'Di:'+str(distance)+'CM'
-        text2 = 'Roll:' + str(Angle)
-        drawConfidenceText(imgc,(0,0),text1,2)
-        drawConfidenceText(imgc,(0,24),text2,2)
+
         #mic_list.append(AngleX)
         #mic_list.append(AngleY)
         #mic_list.append(AngleR)
         #mic_list.append(Angle)
-
-
-        #输出信息   测评时关闭
-        if(AngleR != 0):
-            print("x:",AngleX ,"y:",AngleY,"roll:",Angle,"强度:",AngleR,"距离",distance)
         #print("xyrrd:",AngleX,AngleY,Angle,AngleR,distance)
         #print("x:",AngleX)
         #time.sleep_ms(1)
@@ -111,8 +133,9 @@ def get_mic_dir():
         #print("DIS:",distance)
         #time.sleep_ms(1)
         #显示声源图
-        lcd.display(imgc)
-        gc.collect()    #垃圾回收器
+
+    gc.collect()    #垃圾回收器
+    print("x:",AngleX ,"y:",AngleY,"roll:",Angle)
 #系统初始化
 gc.collect()    #垃圾回收器
 lcd.init()
@@ -133,14 +156,14 @@ pitch_pwm.enable()
 roll_pwm.enable()
 gpio_key1 = GPIO(GPIO.GPIO0,GPIO.IN,GPIO.PULL_UP)
 gpio_red  = GPIO(GPIO.GPIO1,GPIO.OUT)
-num = 45
+num = 30
 Q_duck =0
-#gpio_red.value(1)
-roll_pwm.duty(51.6)
-pitch_pwm.duty(51.5)
+gpio_red.value(1)
+roll_pwm.duty(51.7)
+pitch_pwm.duty(48)
 time.sleep_ms(2000)
 #test
-#while(num<52):
+#while(num<55):
     #num = num+1
     ###roll_pwm.duty(num)
     #pitch_pwm.duty(num)
@@ -164,15 +187,18 @@ mode = 0              # 0为指向模式  1为追踪模式
 t0 = 0
 last_run = 0
 last_gen = 0
-tage_run = 51.5
+tage_run = 48
 if(gpio_key1.value()==0):
     mode = 0
 else:
     mode = 1
 print("mode:",mode)
-B_su = 0.9
+B_su = 0.025
+
+
 min_dock = 47
-max_dock = 56
+max_dock = 49
+LS = 0
 #////////初始化完成
 while True:
        global imgc
@@ -190,42 +216,44 @@ while True:
        #Xprint("tagX:",err_pitch)
        if( mode == 1):      #跟踪模式
            gpio_red.value(1)
-           if(AngleR > 5):#阈值
-               out =  -(AngleR *B_su/180*10)+51.5
-               if(last_gen !=out):
+           out = max_dock - (Angle-10)*0.115
+           if(last_gen !=out):
                    last_gen = out
                    if   out > max_dock:
                         out = max_dock
                    elif  out < min_dock:
                          out =  min_dock
                    if(  tage_run <  out):
-                         tage_run = tage_run +0.2
-                   if(  otage_run >  out ):
-                         tage_run = tage_run -0.2
-                   print("outX:",out)
-                   pitch_pwm.duty(out)
-                   time.sleep_ms(200)
+                         tage_run = tage_run +0.25
+                   if(  tage_run >  out ):
+                         tage_run = tage_run -0.25
+                   print("outX:",out,"tagX:",tage_run)
+                   pitch_pwm.duty(tage_run)
+                   time.sleep_ms(1)
 
        else :               #非跟踪
            gpio_red.value(0)
-
-           if(AngleR > 8 ):#阈值
-                    time.sleep_ms(20)
-                    #快速转向
-                    Q_duck =  -(AngleR *B_su/180*10)+51.5
-                    if Q_duck > 56:
-                        Q_duck = 56
-                    elif Q_duck <47:
-                        Q_duck  = 47
-                    print("out:",Q_duck)
-                    pitch_pwm.duty(Q_duck)
-                    gpio_red.value(1)
-                    time.sleep(2)
-                    AngleR = 0
-                    #gpio_red.value(0)
+           time.sleep_ms(10)
+           if(Angle<90 and Angle >0):
+                        #快速转向
+                   LS = (Angle-10)*0.11
+                   Q_duck = max_dock-LS
+                   print("A:",LS)
+                   print("get:Qout",Q_duck)
+                   if Q_duck > max_dock:
+                       Q_duck = max_dock
+                   elif Q_duck <min_dock:
+                       Q_duck  = min_dock
+                   #print("out:",Q_duck)
+                   pitch_pwm.duty(Q_duck)
+                   gpio_red.value(1)
+                   time.sleep(1)
+                   AngleR = 0
+                   gpio_red.value(0)
 
            last_run = err_roll
-       time.sleep_ms(20)
+       time.sleep_ms(10)
+
        last_run = AngleX
        gc.collect()    #垃圾回收器
 #关机
